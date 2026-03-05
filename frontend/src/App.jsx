@@ -8,13 +8,15 @@ import Signup from './Pages/Signup';
 import Profile from './Pages/Profile';
 import Setting from './Pages/Setting';
 import { useAuthStore } from './store/useAuthStore';
-import { useThemeStore } from './store/useThemeStore';
+import { useThemeStore } from './store/useThemeStore.js';
 import {Loader} from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
-  const {authUser,checkAuth,isCheckingAuth} = useAuthStore();
+  const {authUser,checkAuth,isCheckingAuth,onlineUsers} = useAuthStore();
   const {theme} = useThemeStore();
+
+  console.log( { onlineUsers } );
 
   useEffect(() => {
     checkAuth();

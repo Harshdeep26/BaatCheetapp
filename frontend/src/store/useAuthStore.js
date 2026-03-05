@@ -3,19 +3,24 @@
 import toast from 'react-hot-toast';
 import {create} from 'zustand';
 import {axiosInstance} from '../lib/axios.js';
+import {io} from 'socket.io-client';
 
-export const useAuthStore = create((set) => ({ //this takes a function as an argument that returns an object representing the initial state of the store. In this case, we are creating an authentication store with two properties: isAuthenticated and user. The isAuthenticated property is a boolean that indicates whether the user is currently authenticated or not, while the user property is an object that holds information about the authenticated user, such as their name and email. By using this store, you can easily manage the authentication state of your application and access it from any component that needs it.
+const BASE_URL = import.meta.env.MODE === "development" ? 'http://localhost:5001' : "/" ;
+
+export const useAuthStore = create((set, get) => ({ //this takes a function as an argument that returns an object representing the initial state of the store. In this case, we are creating an authentication store with two properties: isAuthenticated and user. The isAuthenticated property is a boolean that indicates whether the user is currently authenticated or not, while the user property is an object that holds information about the authenticated user, such as their name and email. By using this store, you can easily manage the authentication state of your application and access it from any component that needs it.
     authUser: null,
+    onlineUsers: [], // New state for online users
     isSigningup: false,
     isLoggingin: false,
     isUpdatingProfile: false,
-
     isCheckingAuth: true,
+    socket: null,
 
     checkAuth: async () => {
         try {
             const res = await axiosInstance.get('/auth/check');
             set({authUser:res.data});
+            get().connectSocket(); // Connect to socket after successful auth check
 
         } catch (error) {
             console.log("Error in checkAuth:",error);
@@ -32,6 +37,8 @@ export const useAuthStore = create((set) => ({ //this takes a function as an arg
             const res = await axiosInstance.post('/auth/signup',data);
             set({authUser:res.data});
             toast.success("Account created successfully");
+            
+            get().connectSocket(); // Connect to socket after successful signup
         } catch (error) {
             toast.error(error.response.data.message);
         } finally{
@@ -45,6 +52,8 @@ export const useAuthStore = create((set) => ({ //this takes a function as an arg
             const res = await axiosInstance.post('/auth/login',data);
             set({authUser:res.data});
             toast.success("Logged in successfully");
+
+            get().connectSocket(); // Connect to socket after successful login
         } catch (error) {
             toast.error(error.response.data.message);
         } finally{
@@ -57,6 +66,7 @@ export const useAuthStore = create((set) => ({ //this takes a function as an arg
             await axiosInstance.post('/auth/logout');
             set({authUser:null});
             toast.success("Logged out successfully");
+            get().disconnectSocket(); // Disconnect from socket on logout
         } catch (error) {
             toast.error(error.response.data.message || "Logout failed");
         }
@@ -76,4 +86,23 @@ export const useAuthStore = create((set) => ({ //this takes a function as an arg
         }
     },
     
+    connectSocket: () => {
+        const {authUser} = get();
+        if (!authUser || authUser?.socket?.connected) return; // Ensure user is authenticated before connecting to socket
+        const socket = io(BASE_URL, {
+            query: { userId: authUser._id }, // Send userId as a query parameter for authentication
+        });
+        socket.connect();
+        set({socket:socket});
+
+        socket.on("getOnlineUsers", (userIds) => {
+            set({onlineUsers:userIds}); // Update the online users state with the received list
+        });
+    },
+
+    disconnectSocket: () => {
+        if(get().socket?.connected){
+            get().socket.disconnect();
+        }
+    },
 }));

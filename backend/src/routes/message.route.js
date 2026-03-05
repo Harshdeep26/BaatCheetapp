@@ -4,10 +4,10 @@ import { getMessages, getUsersForSidebar, sendMessage } from "../controllers/mes
 
 const router = express.Router();
 
-router.get("/user", protectRoute, getUsersForSidebar);
+router.get("/users", protectRoute, getUsersForSidebar);
 
 router.get("/:id", protectRoute, getMessages);
 
-router.post("/send/:id", sendMessage);
+router.post("/send/:id", protectRoute, sendMessage); //protected route to send message to user with id :id, the id is of the receiver
 
 export default router;
